@@ -1,5 +1,5 @@
-function UpoloadImageToBlob(imageUrl, containerName, blobName) {
-  var blobService = CreateBlobService(containerName);
+function UpoloadImageToBlob(context, imageUrl, containerName, blobName) {
+  var blobService = CreateBlobService(context, containerName);
 
   // Download the image and upload it to the Blob Storage
   var http = require('http');
@@ -30,7 +30,7 @@ function UpoloadImageToBlob(imageUrl, containerName, blobName) {
   });
 }
 
-function DownloadWebPageProcessedSourceCode(url) {
+function DownloadWebPageProcessedSourceCode(context, url) {
   // Getting the HTTP source code
   const puppeteer = require('puppeteer');
     
@@ -52,7 +52,7 @@ function DownloadWebPageProcessedSourceCode(url) {
   });
 }
 
-function CreateBlobService (containerName){
+function CreateBlobService (context, containerName){
   var azure = require('azure-storage');
   var imagesAccountName = process.env["imagesAccountName"];
   var imagesAccountKey = process.env["imagesAccountKey"];
@@ -74,19 +74,21 @@ function CreateBlobService (containerName){
 module.exports = async function (context, myQueueItem) {
     var containerName = 'images';
 
+    context.log("processing", myQueueItem.ArticleId, myQueueItem.ArticleNumber);
+
     // Getting the article nr that we should process
-    context.log('JavaScript queue trigger function processed work item', myQueueItem);
-    const url = `http://avherald.com/h?article=${myQueueItem}&opt=0`;
+    const url = `http://avherald.com/h?article=${myQueueItem.ArticleId}&opt=0`;
 
     // Download HTML code and execute all the JS on it. We need a full DOM
-    var htmlCode = DownloadWebPageProcessedSourceCode(url)
+    var htmlCode = DownloadWebPageProcessedSourceCode(context, url)
     .then(function(htmlContent) {
-      var imageUrls = htmlContent.match('http://avherald.com\\/img\\/[\\w-_.]+');
-      context.log(imageUrls);
+      var regExPattern = new RegExp("http:\\/\\/avherald.com\\/img\\/[\\w-_.]+", "g");
+      var imageUrls = htmlContent.match(regExPattern);
       return imageUrls;
     }).then(function(imageUrls) {
+      var counter = 1;
       imageUrls.forEach(url => {
-        UpoloadImageToBlob(url, containerName, "foto2.jpg");
+        UpoloadImageToBlob(context, url, containerName, `${myQueueItem.ArticleNumber}-${myQueueItem.ArticleId}-${counter++}.jpg`);
       });
     });
 
