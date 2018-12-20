@@ -86,6 +86,10 @@ module.exports = async function (context, myQueueItem) {
       var imageUrls = htmlContent.match(regExPattern);
       return imageUrls;
     }).then(function(imageUrls) {
+      if(imagesUrls == null)
+      {
+        return;
+      }
       var counter = 1;
       imageUrls.forEach(url => {
         UpoloadImageToBlob(context, url, containerName, `${myQueueItem.ArticleNumber}-${myQueueItem.ArticleId}-${counter++}.jpg`);
